@@ -1,0 +1,12 @@
+# ESP32 Build files
+build/
+*.elf
+*.bin
+*.map
+*.log
+sdkconfig.old
+sdkconfig.*.bak
+# User-specific
+*.swp
+*.swo
+*.vscode/
