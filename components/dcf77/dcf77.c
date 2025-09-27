@@ -46,14 +46,6 @@ static const char* TAG = "DCF77";
 static void IRAM_ATTR gpio_isr_handler(void* arg) { isr = true; }
 
 void dcf77(void* pvParameters) {
-    gptimer_handle_t gptimer = NULL;
-    uint64_t time_diff_high = 0;
-    uint64_t time_diff_low = 0;
-    uint64_t time_diff = 0;
-    uint64_t time_diff2 = 0;
-    uint8_t level = 0;
-    bool new_data = false;
-
     gpio_config(&io_conf_vcc);
     gpio_set_level(DCF_VCC_GPIO, 1);
 
@@ -75,6 +67,7 @@ void dcf77(void* pvParameters) {
         .direction = GPTIMER_COUNT_UP,
         .resolution_hz = 1 * 1000 * 1000,  // 1 MHz
     };
+    gptimer_handle_t gptimer = NULL;
     ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
     ESP_ERROR_CHECK(gptimer_enable(gptimer));
     ESP_ERROR_CHECK(gptimer_start(gptimer));
@@ -82,9 +75,14 @@ void dcf77(void* pvParameters) {
     ESP_LOGI(TAG, "Waiting for GPIO interrupts ...");
 
     while (1) {
+        static bool new_data = false;
+        static uint64_t time_diff = 0;
+        static uint64_t time_diff2 = 0;
         if (isr) {
             isr = false;
             uint64_t now;
+            static uint64_t time_diff_high = 0;
+            static uint64_t time_diff_low = 0;
             // read GPTimer-counter
             gptimer_get_raw_count(gptimer, &now);
             if (gpio_get_level(DCF_TCO_GPIO) == 1) {
@@ -101,18 +99,16 @@ void dcf77(void* pvParameters) {
             static bool startTimeOK = false;
             static uint8_t second = 0;
             static uint8_t minute = 0;
-            static uint8_t pMinute = 0;  // parity Minute
             static bool minuteOK = false;
             static uint8_t hour = 0;
-            static uint8_t pHour = 0;  // parity Hour
             static bool hourOK = false;
             static uint8_t calendarDay = 0;
             static uint8_t weekday = 0;
             static uint8_t month = 0;
             static uint8_t year = 0;
-            static uint8_t pCalendar = 0;
             static bool calenderOK = false;
             static bool dst = false;
+            static uint8_t level = 0;
 
             if (time_diff2 > 1600000 && time_diff2 < 2000000) { // detects the gap of 1.8s between two minutes
                 if (calenderOK && minuteOK && hourOK && startTimeOK && second == 58) {
@@ -152,6 +148,7 @@ void dcf77(void* pvParameters) {
             }
 
             switch (second) {
+                static uint8_t parity = 0;  // parity Minute
                 case 0:
                     minuteOK = false;
                     hourOK = false;
@@ -184,195 +181,195 @@ void dcf77(void* pvParameters) {
                 case 21:
                     ESP_LOGI(TAG, "Minute ones (BCD) bit 1 %u", level);
                     minute = level;   // initialisieren
-                    pMinute = level;  // Parity initialisieren
+                    parity = level;  // Parity initialisieren
                     break;
                 case 22:
                     ESP_LOGI(TAG, "Minute ones (BCD) bit 2 %u", level);
                     minute += 2 * level;
-                    pMinute += level;
+                    parity += level;
                     break;
                 case 23:
                     ESP_LOGI(TAG, "Minute ones (BCD) bit 4 %u", level);
                     minute += 4 * level;
-                    pMinute += level;
+                    parity += level;
                     break;
                 case 24:
                     ESP_LOGI(TAG, "Minute ones (BCD) bit 8 %u", level);
                     minute += 8 * level;
-                    pMinute += level;
+                    parity += level;
                     break;
                 case 25:
                     ESP_LOGI(TAG, "Minute tens (BCD) bit 10 %u", level);
                     minute += 10 * level;
-                    pMinute += level;
+                    parity += level;
                     break;
                 case 26:
                     ESP_LOGI(TAG, "Minute tens (BCD) bit 20 %u", level);
                     minute += 20 * level;
-                    pMinute += level;
+                    parity += level;
                     break;
                 case 27:
                     ESP_LOGI(TAG, "Minute tens (BCD) bit 40 %u", level);
                     minute += 40 * level;
-                    pMinute += level;
+                    parity += level;
                     break;
                 case 28:
                     ESP_LOGI(TAG, "Parity bit %u", level);
                     ESP_LOGI(TAG, "Minute: %u", minute);
-                    minuteOK = pMinute % 2 == level && minute < 60;
+                    minuteOK = (parity & 1) == level && minute < 60;
                     ESP_LOGI(TAG, "MinuteOK:%s", minuteOK ? "true" : "false");
                     break;
                 case 29:
                     ESP_LOGI(TAG, "Hour ones (BCD) bit 1 %u", level);
                     hour = level;   // initialisieren
-                    pHour = level;  // Parity initialisieren
+                    parity = level;  // Parity initialisieren
                     break;
                 case 30:
                     ESP_LOGI(TAG, "Hour ones (BCD) bit 2 %u", level);
                     hour += 2 * level;
-                    pHour += level;
+                    parity += level;
                     break;
                 case 31:
                     ESP_LOGI(TAG, "Hour ones (BCD) bit 4 %u", level);
                     hour += 4 * level;
-                    pHour += level;
+                    parity += level;
                     break;
                 case 32:
                     ESP_LOGI(TAG, "Hour ones (BCD) bit 8 %u", level);
                     hour += 8 * level;
-                    pHour += level;
+                    parity += level;
                     break;
                 case 33:
                     ESP_LOGI(TAG, "Hour tens (BCD) bit 10 %u", level);
                     hour += 10 * level;
-                    pHour += level;
+                    parity += level;
                     break;
                 case 34:
                     ESP_LOGI(TAG, "Hour tens (BCD) bit 20 %u", level);
                     hour += 20 * level;
-                    pHour += level;
+                    parity += level;
                     break;
                 case 35:
                     ESP_LOGI(TAG, "Parity bit %u", level);
                     ESP_LOGI(TAG, "Hour: %u", hour);
-                    hourOK = pHour % 2 == level && hour < 24;
+                    hourOK = (parity & 1) == level && hour < 24;
                     ESP_LOGI(TAG, "hourOK:%s", hourOK ? "true" : "false");
                     break;
                 case 36:
                     ESP_LOGI(TAG, "Day ones (BCD) bit 1 %u", level);
                     calendarDay = level;  // initialize
-                    pCalendar = level;    // Parity initialize
+                    parity = level;    // Parity initialize
                     break;
                 case 37:
                     ESP_LOGI(TAG, "Day ones (BCD) bit 2 %u", level);
                     calendarDay += 2 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 38:
                     ESP_LOGI(TAG, "Day ones (BCD) bit 4 %u", level);
                     calendarDay += 4 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 39:
                     ESP_LOGI(TAG, "Day ones (BCD) bit 8 %u", level);
                     calendarDay += 8 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 40:
                     ESP_LOGI(TAG, "Day tens (BCD) bit 10 %u", level);
                     calendarDay += 10 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 41:
                     ESP_LOGI(TAG, "Day tens (BCD) bit 20 %u", level);
                     calendarDay += 20 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 42:
                     ESP_LOGI(TAG, "Weekday ones (BCD) bit 1 %u", level);
                     weekday = level; // initialize
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 43:
                     ESP_LOGI(TAG, "Weekday ones (BCD) bit 2 %u", level);
                     weekday += 2 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 44:
                     ESP_LOGI(TAG, "Weekday ones (BCD) bit 4 %u", level);
                     weekday += 4 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 45:
                     ESP_LOGI(TAG, "Month ones (BCD) bit 1 %u", level);
                     month = level;       // initialize
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 46:
                     ESP_LOGI(TAG, "Month ones (BCD) bit 2 %u", level);
                     month += 2 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 47:
                     ESP_LOGI(TAG, "Month ones (BCD) bit 4 %u", level);
                     month += 4 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 48:
                     ESP_LOGI(TAG, "Month ones (BCD) bit 8 %u", level);
                     month += 8 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 49:
                     ESP_LOGI(TAG, "Month tens (BCD) bit 10 %u", level);
                     month += 10 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 50:
                     ESP_LOGI(TAG, "Year ones (BCD) bit 1 %u", level);
                     year = level;        // initialize
-                    pCalendar += level; 
+                    parity += level; 
                     break;
                 case 51:
                     ESP_LOGI(TAG, "Year ones (BCD) bit 2 %u", level);
                     year += 2 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 52:
                     ESP_LOGI(TAG, "Year ones (BCD) bit 4 %u", level);
                     year += 4 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 53:
                     ESP_LOGI(TAG, "Year ones (BCD) bit 8 %u", level);
                     year += 8 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 54:
                     ESP_LOGI(TAG, "Year tens (BCD) bit 10 %u", level);
                     year += 10 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 55:
                     ESP_LOGI(TAG, "Year tens (BCD) bit 20 %u", level);
                     year += 20 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 56:
                     ESP_LOGI(TAG, "Year tens (BCD) bit 40 %u", level);
                     year += 40 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 57:
                     ESP_LOGI(TAG, "Year tens (BCD) bit 80 %u", level);
                     year += 80 * level;
-                    pCalendar += level;
+                    parity += level;
                     break;
                 case 58:
                     ESP_LOGI(TAG, "Paritybit %u", level);
                     ESP_LOGI(TAG, "Calendar: %02u.%02u.20%02u Weekday: %u", calendarDay, month, year, weekday);
                     ESP_LOGI(TAG, "DST: %s", dst ? "Yes" : "No");
-                    calenderOK = pCalendar % 2 == level && year < 100 && year > 24 && month >= 1 && month <= 12 &&
+                    calenderOK = (parity & 1) == level && year < 100 && year > 24 && month >= 1 && month <= 12 &&
                                  calendarDay >= 1 && calendarDay <= 31 && weekday >= 1 && weekday <= 7;
                     ESP_LOGI(TAG, "calendarOK:%s", calenderOK ? "true" : "false");
                     break;
