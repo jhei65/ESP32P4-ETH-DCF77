@@ -369,7 +369,7 @@ void dcf77(void* pvParameters) {
                     ESP_LOGI(TAG, "Paritybit %u", level);
                     ESP_LOGI(TAG, "Calendar: %02u.%02u.20%02u Weekday: %u", calendarDay, month, year, weekday);
                     ESP_LOGI(TAG, "DST: %s", dst ? "Yes" : "No");
-                    calenderOK = (parity & 1) == level && year < 100 && year > 24 && month >= 1 && month <= 12 &&
+                    calenderOK = parity % 2 == level && year < 100 && year > 24 && month >= 1 && month <= 12 &&
                                  calendarDay >= 1 && calendarDay <= 31 && weekday >= 1 && weekday <= 7;
                     ESP_LOGI(TAG, "calendarOK:%s", calenderOK ? "true" : "false");
                     break;
