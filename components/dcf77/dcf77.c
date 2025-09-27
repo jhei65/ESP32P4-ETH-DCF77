@@ -8,7 +8,6 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-// #include "driver/gpio.h"
 
 #define DCF_VCC_GPIO 21  // GPIO-Pin für DCF77 VCC
 #define DCF_PON_GPIO 23  // GPIO-Pin für DCF77 PON
@@ -35,9 +34,9 @@ gpio_config_t io_conf_pon = {
 gpio_config_t io_conf_tco = {
     .pin_bit_mask = (1ULL << DCF_TCO_GPIO),  // Bitmaske für den Pin
     .mode = GPIO_MODE_INPUT,                 // INPUT-Mode
-    .pull_up_en = GPIO_PULLUP_DISABLE,       // interner Pull-Up aktivieren (optional)
+    .pull_up_en = GPIO_PULLUP_DISABLE,
     .pull_down_en = GPIO_PULLDOWN_DISABLE,
-    .intr_type = GPIO_INTR_ANYEDGE,  // kein Interrupt, nur Abfrage
+    .intr_type = GPIO_INTR_ANYEDGE,
 };
 
 static volatile bool isr = false;
@@ -63,8 +62,8 @@ void dcf77(void* pvParameters) {
 
     gpio_config(&io_conf_tco);
 
-    // ISR-Dienst config
-    ESP_ERROR_CHECK(gpio_install_isr_service(0));  // Standardkonfiguration
+    // ISR-Service config
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));  // default configuration
     // ISR-Handler for this pin added
     ESP_ERROR_CHECK(gpio_isr_handler_add(DCF_TCO_GPIO, gpio_isr_handler, NULL));
 
@@ -113,12 +112,12 @@ void dcf77(void* pvParameters) {
             static uint8_t year = 0;
             static uint8_t pCalendar = 0;
             static bool calenderOK = false;
-            static bool summertime = false;
+            static bool dst = false;
 
             if (time_diff2 > 1600000 && time_diff2 < 2000000) { // detects the gap of 1.8s between two minutes
                 if (calenderOK && minuteOK && hourOK && startTimeOK && second == 58) {
                     ESP_LOGI(TAG, "Valid time: %02u:%02u 20%02u-%02u-%02u Weekday: %u DST: %s", hour,
-                             minute, year, month, calendarDay, weekday, summertime ? "Yes" : "No");
+                             minute, year, month, calendarDay, weekday, dst ? "Yes" : "No");
                     struct tm tm_time = {
                         .tm_year = year + 100,   // Years since 1900
                         .tm_mon = month - 1,     // Monaths since Januar (0–11) -> 8 = September
@@ -168,11 +167,11 @@ void dcf77(void* pvParameters) {
                     break;
                 case 17:
                     ESP_LOGI(TAG, "'10': Following time in CEST %u", level);
-                    summertime = level == 1;
+                    dst = level == 1;
                     break;
                 case 18:
                     ESP_LOGI(TAG, "'01': Following time in CET %u", level);
-                    summertime = level == 0;
+                    dst = level == 0;
                     break;
                 case 19:
                     ESP_LOGI(TAG, "'1': At the end of this hour a leap second is inserted; otherwise '0'.  %u",
@@ -307,7 +306,7 @@ void dcf77(void* pvParameters) {
                 case 45:
                     ESP_LOGI(TAG, "Month ones (BCD) bit 1 %u", level);
                     month = level;       // initialize
-                    pCalendar += level;  // Parity initialize
+                    pCalendar += level;
                     break;
                 case 46:
                     ESP_LOGI(TAG, "Month ones (BCD) bit 2 %u", level);
@@ -332,7 +331,7 @@ void dcf77(void* pvParameters) {
                 case 50:
                     ESP_LOGI(TAG, "Year ones (BCD) bit 1 %u", level);
                     year = level;        // initialize
-                    pCalendar += level;  // Parity initialize
+                    pCalendar += level; 
                     break;
                 case 51:
                     ESP_LOGI(TAG, "Year ones (BCD) bit 2 %u", level);
@@ -372,7 +371,7 @@ void dcf77(void* pvParameters) {
                 case 58:
                     ESP_LOGI(TAG, "Paritybit %u", level);
                     ESP_LOGI(TAG, "Calendar: %02u.%02u.20%02u Weekday: %u", calendarDay, month, year, weekday);
-                    ESP_LOGI(TAG, "DST: %s", summertime ? "Yes" : "No");
+                    ESP_LOGI(TAG, "DST: %s", dst ? "Yes" : "No");
                     calenderOK = pCalendar % 2 == level && year < 100 && year > 24 && month >= 1 && month <= 12 &&
                                  calendarDay >= 1 && calendarDay <= 31 && weekday >= 1 && weekday <= 7;
                     ESP_LOGI(TAG, "calendarOK:%s", calenderOK ? "true" : "false");

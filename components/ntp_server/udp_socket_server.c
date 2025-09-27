@@ -5,8 +5,6 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-// #include "esp_netif.h"
-// #include "esp_eth.h"
 #include <sys/time.h>
 #include <time.h>
 
@@ -77,7 +75,6 @@ uint64_t getCurrentTimeInNTP64BitFormat() {
 
 void udp_server_task(void *pvParameters) {
     char ntp_packet[NTP_PACKET_SIZE];
-    // char addr_str[128];
     int addr_family = AF_INET;
     int ip_protocol = IPPROTO_IP;
 
@@ -86,7 +83,7 @@ void udp_server_task(void *pvParameters) {
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(NTP_PORT);
 
-    // Zeit ausgeben
+    // print time
 
     int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
     if (sock < 0) {
