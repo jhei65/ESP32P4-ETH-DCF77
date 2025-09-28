@@ -100,14 +100,13 @@ void dcf77(void* pvParameters) {
             static bool minuteOK = false;
             static bool hourOK = false;
             static bool calenderOK = false;
-            static bool dst = false;
             static uint8_t level = 0;
 
             if (time_diff2 > 1600000 && time_diff2 < 2000000) {  // detects the gap of 1.8s between two minutes
                 if (calenderOK && minuteOK && hourOK && startTimeOK && second == 58) {
                     ESP_LOGI(TAG, "Valid time: %02d:%02d 20%02d-%02d-%02d Weekday: %d DST: %s", tm_time.tm_hour,
                              tm_time.tm_min, tm_time.tm_year - 100, tm_time.tm_mon + 1, tm_time.tm_mday,
-                             tm_time.tm_wday, tm_time.tm_isdst ? "Yes" : "No");
+                             tm_time.tm_wday, tm_time.tm_isdst == 1 ? "Yes" : "No");
 
                     time_t t = mktime(&tm_time);  // converts struct tm in time_t (Unix-Timestamp)
                     if (t == -1) {
