@@ -1,43 +1,13 @@
-#include <stdio.h>
 #include <time.h>
 
 #include "driver/gpio.h"
 #include "driver/gptimer.h"
 #include "esp_log.h"
 #include "esp_sntp.h"
-#include "esp_system.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
-#define DCF_VCC_GPIO 21  // GPIO-Pin für DCF77 VCC
-#define DCF_PON_GPIO 23  // GPIO-Pin für DCF77 PON
-#define DCF_TCO_GPIO 22  // GPIO-Pin für DCF77 TCO
-
-// GPIO konfigurieren
-gpio_config_t io_conf_vcc = {
-    .pin_bit_mask = (1ULL << DCF_VCC_GPIO),  // Bitmaske für den Pin
-    .mode = GPIO_MODE_OUTPUT,                // OUTPUT-Mode
-    .pull_up_en = GPIO_PULLUP_DISABLE,
-    .pull_down_en = GPIO_PULLDOWN_DISABLE,
-    .intr_type = GPIO_INTR_DISABLE,
-};
-
-gpio_config_t io_conf_pon = {
-    .pin_bit_mask = (1ULL << DCF_PON_GPIO),  // Bitmaske für den Pin
-    .mode = GPIO_MODE_OUTPUT,                // OUTPUT-Mode
-    .pull_up_en = GPIO_PULLUP_DISABLE,
-    .pull_down_en = GPIO_PULLDOWN_DISABLE,
-    .intr_type = GPIO_INTR_DISABLE,
-};
-
-// GPIO als Input konfigurieren
-gpio_config_t io_conf_tco = {
-    .pin_bit_mask = (1ULL << DCF_TCO_GPIO),  // Bitmaske für den Pin
-    .mode = GPIO_MODE_INPUT,                 // INPUT-Mode
-    .pull_up_en = GPIO_PULLUP_DISABLE,
-    .pull_down_en = GPIO_PULLDOWN_DISABLE,
-    .intr_type = GPIO_INTR_ANYEDGE,
-};
+#define DCF_VCC_GPIO 14  // GPIO-Pin für DCF77 VCC
+#define DCF_PON_GPIO 16  // GPIO-Pin für DCF77 PON
+#define DCF_TCO_GPIO 15  // GPIO-Pin für DCF77 TCO
 
 static volatile bool isr = false;
 static const char* TAG = "DCF77";
@@ -46,12 +16,36 @@ static const char* TAG = "DCF77";
 void IRAM_ATTR gpio_isr_handler(void* arg) { isr = true; }
 
 void dcf77(void* pvParameters) {
+    // GPIO konfigurieren
+    gpio_config_t io_conf_vcc = {
+        .pin_bit_mask = (1ULL << DCF_VCC_GPIO),  // Bitmaske für den Pin
+        .mode = GPIO_MODE_OUTPUT,                // OUTPUT-Mode
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
     gpio_config(&io_conf_vcc);
     gpio_set_level(DCF_VCC_GPIO, 1);
+
+    gpio_config_t io_conf_pon = {
+        .pin_bit_mask = (1ULL << DCF_PON_GPIO),  // Bitmaske für den Pin
+        .mode = GPIO_MODE_OUTPUT,                // OUTPUT-Mode
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
 
     gpio_config(&io_conf_pon);
     gpio_set_level(DCF_PON_GPIO, 0);
 
+    // GPIO als Input konfigurieren
+    gpio_config_t io_conf_tco = {
+        .pin_bit_mask = (1ULL << DCF_TCO_GPIO),  // Bitmaske für den Pin
+        .mode = GPIO_MODE_INPUT,                 // INPUT-Mode
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_ANYEDGE,
+    };
     gpio_config(&io_conf_tco);
 
     // ISR-Service config
@@ -362,6 +356,8 @@ void dcf77(void* pvParameters) {
                     ESP_LOGI(TAG, "second %u", second);
                     break;
             }
-        }  // if (new_data)
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
     }
 }
