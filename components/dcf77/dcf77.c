@@ -12,19 +12,32 @@
 #include "driver/gptimer.h"
 #include "esp_log.h"
 #include "esp_sntp.h"
+#include "freertos/semphr.h"
 
 #define DCF_VCC_GPIO 14  // GPIO-Pin für DCF77 VCC
 #define DCF_PON_GPIO 16  // GPIO-Pin für DCF77 PON
 #define DCF_TCO_GPIO 15  // GPIO-Pin für DCF77 TCO
 
-static volatile bool isr = false;
 static const char* TAG = "DCF77";
+SemaphoreHandle_t xSemaphore = NULL;
 
 // ISR (Interrupt Service Routine)
-static void IRAM_ATTR gpio_isr_handler(void* arg) { isr = true; }
+static void IRAM_ATTR gpio_isr_handler(void* arg) { 
+    //BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    // Release semaphore in interrupt
+    //xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
+    xSemaphoreGiveFromISR(xSemaphore, NULL);
+
+    // Trigger context switch if necessary
+    //if (xHigherPriorityTaskWoken == pdTRUE) {
+    //    portYIELD_FROM_ISR();
+    //}
+}
 
 void dcf77(void* pvParameters) {
-    // GPIO konfigurieren
+    xSemaphore = xSemaphoreCreateBinary();
+    // Configure GPIO
     gpio_config_t io_conf_vcc = {
         .pin_bit_mask = (1ULL << DCF_VCC_GPIO),  // Bitmaske für den Pin
         .mode = GPIO_MODE_OUTPUT,                // OUTPUT-Mode
@@ -46,7 +59,7 @@ void dcf77(void* pvParameters) {
     gpio_config(&io_conf_pon);
     gpio_set_level(DCF_PON_GPIO, 0);
 
-    // GPIO als Input konfigurieren
+    // Configure GPIO as input
     gpio_config_t io_conf_tco = {
         .pin_bit_mask = (1ULL << DCF_TCO_GPIO),  // Bitmaske für den Pin
         .mode = GPIO_MODE_INPUT,                 // INPUT-Mode
@@ -79,8 +92,7 @@ void dcf77(void* pvParameters) {
         static uint64_t time_diff = 0;
         static uint64_t time_diff2 = 0;
         static struct tm tm_time = {0};
-        if (isr) {
-            isr = false;
+        if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
             uint64_t now;
             static uint64_t time_diff_high = 0;
             static uint64_t time_diff_low = 0;
@@ -364,8 +376,6 @@ void dcf77(void* pvParameters) {
                     ESP_LOGI(TAG, "second %u", second);
                     break;
             }
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
+        } 
     }
 }
