@@ -11,3 +11,4 @@ sdkconfig
 *.swp
 *.swo
 *.vscode/
+SECURITY.md

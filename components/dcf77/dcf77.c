@@ -39,7 +39,7 @@ void dcf77(void* pvParameters) {
     xSemaphore = xSemaphoreCreateBinary();
     // Configure GPIO
     gpio_config_t io_conf_vcc = {
-        .pin_bit_mask = (1ULL << DCF_VCC_GPIO),  // Bitmaske für den Pin
+        .pin_bit_mask = (1ULL << DCF_VCC_GPIO)|(1ULL << DCF_PON_GPIO),  // Bitmaske für den Pin
         .mode = GPIO_MODE_OUTPUT,                // OUTPUT-Mode
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -47,16 +47,6 @@ void dcf77(void* pvParameters) {
     };
     gpio_config(&io_conf_vcc);
     gpio_set_level(DCF_VCC_GPIO, 1);
-
-    gpio_config_t io_conf_pon = {
-        .pin_bit_mask = (1ULL << DCF_PON_GPIO),  // Bitmaske für den Pin
-        .mode = GPIO_MODE_OUTPUT,                // OUTPUT-Mode
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-
-    gpio_config(&io_conf_pon);
     gpio_set_level(DCF_PON_GPIO, 0);
 
     // Configure GPIO as input
