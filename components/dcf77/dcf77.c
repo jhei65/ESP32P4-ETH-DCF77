@@ -22,15 +22,15 @@ static const char* TAG = "DCF77";
 SemaphoreHandle_t xSemaphore = NULL;
 
 // ISR (Interrupt Service Routine)
-static void IRAM_ATTR gpio_isr_handler(void* arg) { 
-    //BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+static void IRAM_ATTR gpio_isr_handler(void* arg) {
+    // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     // Release semaphore in interrupt
-    //xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
+    // xSemaphoreGiveFromISR(xSemaphore, &xHigherPriorityTaskWoken);
     xSemaphoreGiveFromISR(xSemaphore, NULL);
 
     // Trigger context switch if necessary
-    //if (xHigherPriorityTaskWoken == pdTRUE) {
+    // if (xHigherPriorityTaskWoken == pdTRUE) {
     //    portYIELD_FROM_ISR();
     //}
 }
@@ -39,8 +39,8 @@ void dcf77(void* pvParameters) {
     xSemaphore = xSemaphoreCreateBinary();
     // Configure GPIO
     gpio_config_t io_conf_vcc = {
-        .pin_bit_mask = (1ULL << DCF_VCC_GPIO)|(1ULL << DCF_PON_GPIO),  // Bitmaske für den Pin
-        .mode = GPIO_MODE_OUTPUT,                // OUTPUT-Mode
+        .pin_bit_mask = (1ULL << DCF_VCC_GPIO) | (1ULL << DCF_PON_GPIO),  // Bitmaske für den Pin
+        .mode = GPIO_MODE_OUTPUT,                                         // OUTPUT-Mode
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE,
@@ -366,6 +366,6 @@ void dcf77(void* pvParameters) {
                     ESP_LOGI(TAG, "second %u", second);
                     break;
             }
-        } 
+        }
     }
 }
